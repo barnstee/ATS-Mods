@@ -426,3 +426,17 @@ FodyWeavers.xsd
 
 # Official VS Code C# Dev Kit Extension exclusion
 #*.lscache
+
+# --- ATS mods: generated / SCS-derived content (rebuild with the scripts) ---
+*.scs
+__pycache__/
+vnl_electric/def/
+vnl_electric/vehicle/
+vnl_electric/automat/
+vnl_electric/blender/
+vnl_electric/build_log.txt
+vnl_electric/tools/bin/
+ev_chargers/ev_marker/project/
+ev_chargers/ev_marker/mod/
+ev_chargers/ChargerFinder/bin/
+ev_chargers/ChargerFinder/obj/

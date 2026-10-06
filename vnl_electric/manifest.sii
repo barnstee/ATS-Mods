@@ -1,0 +1,12 @@
+﻿SiiNunit
+{
+mod_package : .package_name
+{
+	package_version: "1.0"
+	display_name: "Volvo VNL Electric"
+	author: "Erich Barnstedt"
+	category[]: "truck"
+	description_file: "description.txt"
+	compatible_versions[]: "1.61.*"
+}
+}
