@@ -76,6 +76,9 @@ python make_vnl_electric.py --game C:\ATSExtract --donor volvo.vnl2025 --pack
 - `make_vnl_electric.py --pack`: definitions -> `vnl_electric\def`, packs `ATS-Mods\vnl_electric_concept.scs`, and
   copies it to `Documents\American Truck Simulator\mod` (OneDrive Documents first). If ATS is running the copy is
   skipped with a warning - close ATS and run again.
+- `make_vnl_electric.py ... --workshop [dir]` (implies `--pack`): also writes the Steam Workshop Uploader input to
+  `ATS-Mods\workshop` (or `dir`): `vnl_electric\` = the mod folder to select in the uploader (root: only `versions.sii` + `universal\`, which holds `manifest.sii`, `description.txt`, `mod_icon.jpg` and the content), `preview.jpg` =
+  640x360 Workshop preview image. Upload with *American Truck Simulator - Workshop Uploader* (Steam > Library > Tools).
 - Log: `vnl_electric\build_log.txt`.
 
 ### EV chargers

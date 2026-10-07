@@ -1,10 +1,16 @@
-Fictional Volvo VNL Electric concept, built on the Volvo VNL (2025).
+Volvo VNL Electric concept
 
-- Body, cabins, interiors and all 27 VNL frames (4x2, 6x2, 6x4) - battery packs from the Volvo VNR Electric, sized to each frame in Standard, ER and XR range, step ladder and exhaust removed.
-- Only the electric drivetrain (2-speed transmission, e-motor sound) is taken from the VNR Electric.
-- An approximation of the new Volvo e-axle is used as motors - 460 kW per driven axle, dual e-axle 920 kW on 6x4 frames.
+- Body, cabins, interiors and all 27 VNL frames (4x2, 6x2, 6x4) built on the 2025 Volvo VNL.
+- Battery packs from the Volvo VNR Electric, sized to each frame in Standard, ER and XR range.
+- An approximation of the Volvo e-axle is used as motors - 460 kW per driven axle, dual e-axle 920 kW on 6x4 frames. This creates space for a 3rd battery pack within the frame.
 - VNL Electric factory paint job with an optional new logo on the sleeper cabs.
 
 Requires the Volvo VNL (2025) DLC and Ownable Volvo VNR Electric mod.
 
 Source and build instructions: https://github.com/barnstee/ATS-Mods
+
+Please create issues at https://github.com/barnstee/ATS-Mods/issues or even better pull requests with the fixes if you find any bugs or have suggestions for improvements.
+
+PRs used as inspiration:
+https://www.volvotrucks.us/news-and-stories/press-releases/2026/may/volvo-trucks-previews-the-next-step-in-electric-trucking-for-north-america/
+https://www.volvotrucks.co.uk/en-gb/news/press-releases/2022/sep/volvo-trucks-presents-a-new-fully-electric-axle-for-extended-range.html

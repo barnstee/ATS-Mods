@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-make_vnl_electric.py - builds the fictional "Volvo VNL Electric (concept)" truck for ATS.
+make_vnl_electric.py - builds the "Volvo VNL Electric (concept)" truck for ATS.
 
 Recipe
   body / cabins / interiors / accessories / lights / sounds  <- base-game Volvo VNL (2024)
   frames (chassis)                                             <- base-game Volvo VNL, electrified
   e-motor, 2-speed I-Shift, e-sounds                           <- base-game Volvo VNR Electric
   + battery capacity scaled by wheelbase (longer frame = more packs)
-  + extended-range battery packs (capacity scaled)  + fictional dual-motor 605 hp option
+  + extended-range battery packs (capacity scaled)  + dual-motor 605 hp option
   + VNR Electric battery packs + e-motor unit in place of the fuel tanks (tools\batteries.py)
   + its own Volvo dealer showcase slot
 
@@ -253,7 +253,7 @@ def variants(tgt, rng, xr):
                     t2, flags=re.M, count=1)
         t2 = PRICE_RE.sub(lambda p: f"{p.group(1)}{int(int(p.group(2)) * 1.35)}{p.group(3)}", t2)
         wr(os.path.join(edir, f.replace("vnr_", "vnr_dm_")), t2)
-        log(f"[MOT]  added fictional dual-motor 605 hp variant of {f}")
+        log(f"[MOT]  added dual-motor 605 hp variant of {f}")
         break
 
 
@@ -316,17 +316,24 @@ def dealer(game, donor, out, default):
         t = re.sub(r'\.tdealer\.' + re.escape(sv.group(1)) + r'(?![a-z0-9_])', '.tdealer.vnl_e', t)
     rel_inc = os.path.relpath(src, ddir).replace(os.sep, "/")
     brand_dir = rel_inc.split("/")[0] if "/" in rel_inc else "volvo"
-    inc = f"{brand_dir}/vnl_e.sii"
-    wr(os.path.join(out, "def", "vehicle", "truck_dealer", *inc.split("/")), t)
-    brand = "@@brand_volvo@@"
-    for f in os.listdir(ddir):
-        p = os.path.join(ddir, f)
-        if f.endswith(".sii") and os.path.isfile(p) and rel_inc in rd(p):
-            m = re.search(r'brand\s*:\s*"([^"]+)"', rd(p)); brand = m.group(1) if m else brand
-    wr(os.path.join(out, "def", "vehicle", "truck_dealer", f"{brand_dir}.vnl_e.sii"),
-       'SiiNunit\n{\ntruck_dealer_sortiment : .tdealer.sortiment\n{\n'
-       f'\tbrand: "{brand}"\n\tshowcase_vehicles[0]: .tdealer.vnl_e\n}}\n@include "{inc}"\n}}\n')
+    # every .sii in truck_dealer/<brand>/ is one showcase truck at that brand's dealer (no list unit needed)
+    wr(os.path.join(out, "def", "vehicle", "truck_dealer", brand_dir, "volvo_vnl_e.sii"), t)
     log(f"[DLR]  showcase slot added from {os.path.relpath(src, game)}")
+
+
+# icons referenced by the base-game VNL defs that exist in no game archive (Workshop validator rejects them)
+ICON_FIX = {"truck/volvo_vnl2025/accessory/int_display/camera_paint": "truck/volvo_vnl2025/accessory/mirror/cam_paint_s",
+            "lamp_xenon_01": "rect_light"}
+
+
+def fix_icons(tgt):
+    n = 0
+    for f in walk(tgt):
+        s = rd(f)
+        s2 = re.sub(r'^(\s*icon\s*:\s*")([^"]+)(")', lambda m: m.group(1) + ICON_FIX.get(m.group(2), m.group(2)) + m.group(3), s, flags=re.M)
+        if s2 != s:
+            wr(f, s2); n += 1
+    log(f"[ICO]  fixed missing preview icons in {n} files")
 
 
 def main():
@@ -335,8 +342,12 @@ def main():
     a.add_argument("--range", type=float, default=1.75); a.add_argument("--xr", type=float, default=2.5)
     a.add_argument("--vnr-interior", action="store_true"); a.add_argument("--list", action="store_true")
     a.add_argument("--pack", action="store_true")
+    a.add_argument("--workshop", nargs="?", const=os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "workshop")),
+                   help="also write the unpacked Steam Workshop folder + preview.jpg (default ATS-Mods\\workshop; implies --pack)")
     a.add_argument("--out", default=os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
     o = a.parse_args()
+    if o.workshop:
+        o.pack = True
     if o.list:
         return do_list(o.game)
     if not o.donor:
@@ -357,6 +368,7 @@ def main():
     ev_frames(tgt, o.out, TARGET, rd, wr, log)
     ev_engines(tgt, TARGET, rd, wr, log)
     ev_paintjob(tgt, o.out, TARGET, wr, log)
+    fix_icons(tgt)
     wr(os.path.join(o.out, "build_log.txt"), "\n".join(LOG) + "\n")
     if o.pack:
         scs = os.path.join(os.path.dirname(o.out), "vnl_electric_concept.scs")
@@ -371,6 +383,24 @@ def main():
         if mod:
             print(f"Installed to {mod}")
         print(f"Packed {scs} -> Documents\\American Truck Simulator\\mod")
+        if o.workshop:
+            workshop(scs, os.path.join(os.path.dirname(o.out), "screenshot.jpg"), o.workshop)
+
+
+def workshop(scs, shot, dst):
+    """Workshop Uploader input: <dst>\\vnl_electric (mod folder) + <dst>\\preview.jpg (640x360).
+    Mod folder root may only hold versions.sii and version packages ([a-z0-9_]); a \"universal\" package is required,
+    so the whole unpacked .scs (manifest.sii, description.txt, mod_icon.jpg, content) goes into universal\\."""
+    from PIL import Image, ImageOps
+    mod = os.path.join(dst, "vnl_electric")
+    shutil.rmtree(mod, ignore_errors=True)
+    with zipfile.ZipFile(scs) as z:
+        z.extractall(os.path.join(mod, "universal"))
+    mf = os.path.join(mod, "universal", "manifest.sii")
+    wr(mf, re.sub(r"^\s*(compatible_versions\[\]|display_name)\s*:.*\n", "", rd(mf), flags=re.M))
+    wr(os.path.join(mod, "versions.sii"), "SiiNunit\n{\npackage_version_info : .universal\n{\n\tpackage_name: \"universal\"\n}\n}\n")
+    ImageOps.fit(Image.open(shot).convert("RGB"), (640, 360), Image.LANCZOS).save(os.path.join(dst, "preview.jpg"), "JPEG", quality=88)
+    print(f"Workshop folder {mod} + preview.jpg ready for the Workshop Uploader")
 
 
 def mod_icon(src, size=(276, 162)):
