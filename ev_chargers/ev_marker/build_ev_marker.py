@@ -1,4 +1,4 @@
-﻿"""Builds ev_chargers.scs: plug world-map icon + spinning plug marker for the map editor."""
+﻿"""Builds the plug world-map icon and plug marker model for ev_chargers.scs (placed on the map by ChargerFinder --place)."""
 import math, os, shutil, struct, subprocess, sys, zipfile
 from PIL import Image, ImageDraw, ImageFilter
 

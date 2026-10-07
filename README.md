@@ -9,7 +9,7 @@ and ignored by git.
 | Folder | Mod / tool | Output |
 |---|---|---|
 | [`vnl_electric`](vnl_electric/README.md) | Volvo VNL Electric: VNL 2025 on electrified frames, VNR battery packs + centre pack, e-axles 460/920 kW, "Phoenix Trucking" paint | `vnl_electric_concept.scs` |
-| [`ev_chargers`](ev_chargers/README.md) | finds the EV charger props on the map; plug world-map icon + plug marker model; map editor guide | `ev_chargers.scs` |
+| [`ev_chargers`](ev_chargers/README.md) | finds every EV charger on the map (base + all owned state DLCs) and marks it automatically: plug world-map icon + plug marker; F7 emergency recharge = charger stop | `ev_chargers.scs` |
 
 ---
 
@@ -21,9 +21,9 @@ and ignored by git.
 | American Truck Simulator | 1.61 + DLCs *Volvo VNL (2025)* and *Ownable Volvo VNR Electric* mod | Steam | |
 | Python | 3.12+ | on PATH | python.org |
 | Pillow | see `requirements.txt` | `pip install -r requirements.txt` | |
-| SCS Extractor | the copy shipped with the game (the one on the website cannot read HashFS v2) | `...\steamapps\common\American Truck Simulator\scs_extractor.exe` | Use [sk-zk/Extractor](https://github.com/sk-zk/Extractor/releases) with `--deep` (see 1.2) |
+| SCS Extractor | the game's `scs_extractor.exe` (if present) or [sk-zk/Extractor](https://github.com/sk-zk/Extractor/releases) | game folder / any folder | the website version cannot read HashFS v2 |
 | ConverterPIX | latest | `vnl_electric\tools\bin\converter_pix.exe` | https://github.com/mwl4/ConverterPIX/raw/master/bin/win_x64/converter_pix.exe |
-| https://download.eurotrucksimulator2.com/conversion_tools_2_21.zip (newest listed on modding.scssoft.com > Tools > Conversion Tools) |
+| SCS Conversion Tools | latest | `C:\ATSExtract\conversion_tools` | https://download.eurotrucksimulator2.com/conversion_tools_2_21.zip (newest on modding.scssoft.com > Tools > Conversion Tools) |
 | .NET SDK | 8 or newer | on PATH | dotnet.microsoft.com (only for `ev_chargers/ChargerFinder`) |
 | Blender 3.6 + SCS Blender Tools | optional | | only for `vnl_electric/tools/inspect_models.py` |
 
@@ -46,15 +46,11 @@ foreach ($a in "def", "dlc_volvo_vnl2025", "dlc_volvo_vnr_e") { & "$g\scs_extrac
 Set `$g` to your game folder (for example `D:\SteamLibrary\steamapps\common\American Truck Simulator`).
 Result: `C:\ATSExtract\def\vehicle\truck\volvo.vnl2025`, `...\volvo.vnr_e`, `C:\ATSExtract\vehicle\truck\volvo_vnl2025`, `...\volvo_vnr_e`.
 
-Only for `ev_chargers` (map data, about 1.5 GB):
+Only for `ev_chargers` (map of the base game and every installed state DLC, about 1 GB) - one folder for all of them:
 ```powershell
-New-Item -ItemType Directory -Force C:\ATSExtract\map_extract | Out-Null
-& "$g\scs_extractor.exe" "$g\base_map.scs" C:\ATSExtract\map_extract
-foreach ($a in "dlc_arizona", "dlc_nevada", "dlc_or", "dlc_wa") {
-  New-Item -ItemType Directory -Force C:\ATSExtract\map_dlc\$a | Out-Null
-  & "$g\scs_extractor.exe" "$g\$a.scs" C:\ATSExtract\map_dlc\$a
-  Copy-Item C:\ATSExtract\map_extract\map\usa.mbd C:\ATSExtract\map_dlc\$a\map -ErrorAction SilentlyContinue }
+python ev_chargers\extract_maps.py --game $g --extractor <path to extractor.exe>   # -> C:\ATSExtract\map_all + sector_source.csv
 ```
+Run it again after buying another state DLC or after an ATS map update.
 
 ### 1.3 Conversion tools
 Unzip the SCS Conversion Tools to `C:\ATSExtract\conversion_tools`. The build scripts create the junctions
@@ -83,26 +79,24 @@ python make_vnl_electric.py --game C:\ATSExtract --donor volvo.vnl2025 --pack
 
 ### EV chargers
 ```powershell
-cd ev_chargers\ChargerFinder; dotnet run          # -> ev_chargers\data\chargers.csv
-cd ..\ev_marker; python build_ev_marker.py; python package_ev_marker.py   # -> ev_chargers.scs, installed to the mod folder
+cd ev_chargers\ev_marker; python build_ev_marker.py          # marker model + icon (wipes ev_marker\mod)
+cd ..\ChargerFinder; dotnet run --place                      # -> data\chargers.csv + map sectors with the icons/markers
+cd ..\ev_marker; python package_ev_marker.py                 # -> ev_chargers.scs, installed to the mod folder
 ```
+Keep this order: `build_ev_marker.py` clears `ev_marker\mod`, where `--place` writes the map sectors.
 
 ---
 
 ## 3. Play / test
-1. ATS > Mod Manager: enable **Volvo VNL Electric** and **EV Chargers** (EV Chargers above any map mod you create).
+1. ATS > Mod Manager: enable **Volvo VNL Electric** and **EV Chargers** (EV Chargers above other map mods).
+   Chargers show a green plug on the world map; stop there and use F7 > Emergency recharge.
 2. Volvo dealer: VNL Electric. Use a newly bought truck after rebuilding (old saves may keep removed parts).
 3. Problems: `Documents\American Truck Simulator\game.log.txt` (search for `vnl_e`, `<ERROR>`).
-
-## 4. Map editor (placing charger markers)
-1. Close ATS. In `Documents\American Truck Simulator\config.cfg` set `uset g_developer "1"` and `uset g_console "1"`.
-2. Steam launch options: `-edit -developer -console` (remove `-edit` again to play normally).
-3. Editor: Map > Open `usa`, then follow [`ev_chargers/EV_chargers_map_editor_guide.md`](ev_chargers/EV_chargers_map_editor_guide.md).
 
 ## Repository layout
 ```
 vnl_electric/  tools/ (scripts)  assets/logo.jpg  manifest.sii  description.txt
-ev_chargers/   ChargerFinder/ (.NET)  ev_marker/ (scripts)  data/*.csv  EV_chargers_map_editor_guide.md
+ev_chargers/   extract_maps.py  ChargerFinder/ (.NET)  ev_marker/ (scripts)  data/chargers.csv
 ```
 Generated, not committed: `vnl_electric/{def,vehicle,automat,blender}/`, `build_log.txt`, `tools/bin/`, `ev_marker/{project,mod}/`, `*.scs`.
 
