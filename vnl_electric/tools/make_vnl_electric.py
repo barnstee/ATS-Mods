@@ -103,7 +103,7 @@ def clone_vnr(game, vnr, tgt):
     vroot = os.path.join(game, *TRUCK_DIR, vnr)
     if not os.path.isdir(vroot):
         sys.exit(f"ERROR: {vroot} not found (use --vnr)")
-    path_re = re.compile(r'/def/vehicle/truck/' + re.escape(vnr) + r'/([^"\s]+\.s[iu]i)', re.I)
+    path_re = re.compile(r'/def/vehicle/truck/' + re.escape(vnr) + r'/([^"\s]+\.(?:s[iu]i|soundref))', re.I)
     unit_re = re.compile(r'(?<![a-z0-9_])([a-z0-9_]{1,12})\.' + re.escape(vnr) + r'\.([a-z0-9_]+)', re.I)
 
     # tokens already used by the VNL clone, per accessory type
@@ -363,6 +363,7 @@ def main():
         with zipfile.ZipFile(scs, "w", zipfile.ZIP_DEFLATED) as z:
             for b in ("manifest.sii", "description.txt"):
                 z.write(os.path.join(o.out, b), b)
+            z.writestr("mod_icon.jpg", mod_icon(os.path.join(os.path.dirname(o.out), "screenshot.jpg")))
             for f in walk(os.path.join(o.out, "def")):
                 z.write(f, os.path.relpath(f, o.out).replace(os.sep, "/"))
             pack_models(z, o.out)
@@ -370,6 +371,15 @@ def main():
         if mod:
             print(f"Installed to {mod}")
         print(f"Packed {scs} -> Documents\\American Truck Simulator\\mod")
+
+
+def mod_icon(src, size=(276, 162)):
+    """Mod manager icon: screenshot centre-cropped and scaled to the 276x162 JPG ATS expects."""
+    import io
+    from PIL import Image, ImageOps
+    img = ImageOps.fit(Image.open(src).convert("RGB"), size, Image.LANCZOS)
+    b = io.BytesIO(); img.save(b, "JPEG", quality=92)
+    return b.getvalue()
 
 
 if __name__ == "__main__":

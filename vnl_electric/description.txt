@@ -1,2 +1,10 @@
-Fictional Volvo VNL Electric: 2024 VNL body and sleepers on the VNR Electric battery frame and e-drivetrain,
-with extended-range ER/XR battery packs and a dual-motor 605 hp option. Definitions only - models come from the base game.
+Fictional Volvo VNL Electric concept, built on the Volvo VNL (2025).
+
+- Body, cabins, interiors and all 27 VNL frames (4x2, 6x2, 6x4) - battery packs from the Volvo VNR Electric, sized to each frame in Standard, ER and XR range, step ladder and exhaust removed.
+- Only the electric drivetrain (2-speed transmission, e-motor sound) is taken from the VNR Electric.
+- An approximation of the new Volvo e-axle is used as motors - 460 kW per driven axle, dual e-axle 920 kW on 6x4 frames.
+- VNL Electric factory paint job with an optional new logo on the sleeper cabs.
+
+Requires the Volvo VNL (2025) DLC and Ownable Volvo VNR Electric mod.
+
+Source and build instructions: https://github.com/barnstee/ATS-Mods

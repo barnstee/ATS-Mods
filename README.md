@@ -18,12 +18,12 @@ and ignored by git.
 ### 1.1 Tools
 | Tool | Version | Where it must be | Get it |
 |---|---|---|---|
-| American Truck Simulator | 1.61 + DLCs *Volvo VNL (2025)* and *Volvo VNR Electric* | Steam | |
+| American Truck Simulator | 1.61 + DLCs *Volvo VNL (2025)* and *Ownable Volvo VNR Electric* mod | Steam | |
 | Python | 3.12+ | on PATH | python.org |
 | Pillow | see `requirements.txt` | `pip install -r requirements.txt` | |
-| SCS Extractor | the copy shipped with the game (the one on the website cannot read HashFS v2) | `...\steamapps\common\American Truck Simulator\scs_extractor.exe` | comes with ATS |
+| SCS Extractor | the copy shipped with the game (the one on the website cannot read HashFS v2) | `...\steamapps\common\American Truck Simulator\scs_extractor.exe` | Use [sk-zk/Extractor](https://github.com/sk-zk/Extractor/releases) with `--deep` (see 1.2) |
 | ConverterPIX | latest | `vnl_electric\tools\bin\converter_pix.exe` | https://github.com/mwl4/ConverterPIX/raw/master/bin/win_x64/converter_pix.exe |
-| SCS Conversion Tools | latest | `C:\ATSExtract\conversion_tools` (contains `convert.cmd`, `bin\win_x64\tools\resconvert.exe`) | modding.scssoft.com > SCS Blender Tools > Download > Conversion Tools |
+| https://download.eurotrucksimulator2.com/conversion_tools_2_21.zip (newest listed on modding.scssoft.com > Tools > Conversion Tools) |
 | .NET SDK | 8 or newer | on PATH | dotnet.microsoft.com (only for `ev_chargers/ChargerFinder`) |
 | Blender 3.6 + SCS Blender Tools | optional | | only for `vnl_electric/tools/inspect_models.py` |
 
@@ -40,7 +40,10 @@ target folder to exist. Extract into the **same** folder, base first, DLCs on to
 $g = "C:\Program Files (x86)\Steam\steamapps\common\American Truck Simulator"
 New-Item -ItemType Directory -Force C:\ATSExtract | Out-Null
 foreach ($a in "def", "dlc_volvo_vnl2025", "dlc_volvo_vnr_e") { & "$g\scs_extractor.exe" "$g\$a.scs" C:\ATSExtract }
+# without scs_extractor.exe in the game folder (sk-zk/Extractor):
+# extractor.exe "$g\def.scs" "$g\dlc_volvo_vnl2025.scs" "$g\dlc_volvo_vnr_e.scs" --deep -d C:\ATSExtract
 ```
+Set `$g` to your game folder (for example `D:\SteamLibrary\steamapps\common\American Truck Simulator`).
 Result: `C:\ATSExtract\def\vehicle\truck\volvo.vnl2025`, `...\volvo.vnr_e`, `C:\ATSExtract\vehicle\truck\volvo_vnl2025`, `...\volvo_vnr_e`.
 
 Only for `ev_chargers` (map data, about 1.5 GB):
