@@ -52,9 +52,10 @@ File.WriteAllLines(outCsv, rows);
 Console.WriteLine($"{rows.Count - 1} chargers, {cities.Count} city areas, {companies.Count} companies -> {outCsv}");
 foreach (var r in rows) Console.WriteLine(r);
 
-// ---- --place: put the plug icon (world map) and the plug marker model at every charger site, no map editor needed ----
-// Charger posts within 100 m form one site (power boxes ia_5e004 are electrical cabinets, never next to a post).
-// Only the sectors that get items are written, into ev_marker/mod/map/usa (packed into ev_chargers.scs).
+// ---- --place (EXPERIMENTAL): plug icon (world map / GPS) at every charger site, in ONE extra sector file ----
+// Re-saving SCS sectors with TruckLib 0.5.1 crashed ATS 1.61 (it re-encodes every item). So nothing of SCS is re-saved:
+// all icons/markers go into one new sector at an unused coordinate (items outside their sector's bounds only give an
+// "Excessive sector boundary" warning). The .desc (40 bytes in 1.61, TruckLib writes 32) is copied from a game sector.
 if (args.Contains("--place"))
 {
     var posts = chargers.Where(c => c.model != "ia_5e004").Select(c => c.pos).ToList();
@@ -64,45 +65,39 @@ if (args.Contains("--place"))
         var s = sites.FirstOrDefault(s => s.Any(o => Vector2.Distance(new(o.X, o.Z), new(p.X, p.Z)) < 100));
         if (s != null) s.Add(p); else sites.Add(new() { p });
     }
-    var targets = sites.Select(s => Map.GetSectorOfCoordinate(s[0])).Distinct().ToList();
-    var tmp = Path.Combine(Path.GetTempPath(), "ev_chargers_map");
-    // load the target sectors plus their neighbours, add the items, save
-    var load = targets.SelectMany(t => from dx in new[] { -1, 0, 1 } from dz in new[] { -1, 0, 1 } select new SectorCoordinate(t.X + dx, t.Z + dz))
-                      .Distinct().Where(c => map.Sectors.ContainsKey(c)).ToList();
-    var sub = Map.Open(mbd, load);
+    var ev = new Map();
     foreach (var s in sites)
     {
         var c = new Vector3(s.Average(p => p.X), s.Average(p => p.Y), s.Average(p => p.Z));
-        var icon = MapOverlay.Add(sub, c, OverlayType.RoadName);   // world map / GPS icon (material/ui/map/road/road_ev_plug)
+        var icon = MapOverlay.Add(ev, c, OverlayType.RoadName);   // world map / GPS icon (material/ui/map/road/road_ev_plug)
         icon.Look = "ev_plug";
-        Model.Add(sub, c + new Vector3(3, 0, 0), "ev_plug", "default", "default");   // green plug sign (model.ev_plug)
+        // no 3D marker: models are aux items, streamed only for the sector around the player - this sector is off the map
     }
-    if (Directory.Exists(tmp)) Directory.Delete(tmp, true);
-    sub.Save(tmp, "usa", true);
-    // TruckLib may store an item that crosses a sector border in the neighbour sector: ship that sector too, until
-    // every original item of the shipped sectors is in the shipped files (otherwise e.g. a road would vanish in game)
-    var ship = targets.ToHashSet();
-    var savedBySector = new Dictionary<SectorCoordinate, Dictionary<ulong, MapItem>>();
-    while (true)
+    // unused sector coordinate next to the map (no SCS file is replaced)
+    var used = map.Sectors.Keys.ToHashSet();
+    var home = Enumerable.Range(0, 100).Select(i => new SectorCoordinate(-40 - i, -30)).First(c => !used.Contains(c));
+    var bf = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Static;
+    var mt = typeof(Map);
+    var far = mt.GetMethod("GetFarModelChildren", bf)!.Invoke(ev, null)!;
+    var bySector = (System.Collections.IDictionary)mt.GetMethod("GetSectorItems", bf)!.Invoke(ev, new[] { far })!;
+    object? merged = null;
+    foreach (var si in bySector.Values)
     {
-        var saved = Map.Open(Path.Combine(tmp, "usa.mbd"), ship.ToList()).MapItems;
-        var lost = Map.Open(mbd, ship.ToList()).MapItems.Keys.Where(k => !saved.ContainsKey(k)).ToList();
-        Console.WriteLine($"shipping {ship.Count} sectors, {lost.Count} items stored in other sectors");
-        if (lost.Count == 0) break;
-        foreach (var k in lost)
+        if (merged == null) { merged = si; continue; }
+        foreach (var list in new[] { "BaseItems", "AuxItems", "SndItems" })
         {
-            var sec = load.Where(c => !ship.Contains(c)).FirstOrDefault(c => (savedBySector.TryGetValue(c, out var m) ? m
-                : savedBySector[c] = Map.Open(Path.Combine(tmp, "usa.mbd"), new List<SectorCoordinate> { c }).MapItems).ContainsKey(k));
-            if (sec == default) throw new InvalidOperationException($"item {k:X} not found in the loaded sectors");
-            ship.Add(sec);
+            var f = si.GetType().GetProperty(list) ?? throw new MissingMemberException(list);
+            var dst = (System.Collections.IList)f.GetValue(merged)!;
+            foreach (var it in (System.Collections.IList)f.GetValue(si)!) dst.Add(it);
         }
     }
-    targets = ship.ToList();
+    var nodes = mt.GetMethod("GetSectorNodes", bf)!.Invoke(null, new[] { merged!, far })!;
     var outDir = Path.GetFullPath(Path.Combine("..", "ev_marker", "mod", "map", "usa"));
     if (Directory.Exists(outDir)) Directory.Delete(outDir, true);
     Directory.CreateDirectory(outDir);
-    var names = targets.Select(t => Path.GetFileNameWithoutExtension(Sector.SectorFileNameFromSectorCoords(t))).ToHashSet();
-    var files = Directory.GetFiles(Path.Combine(tmp, "usa")).Where(f => names.Contains(Path.GetFileNameWithoutExtension(f))).ToList();
-    foreach (var f in files) File.Copy(f, Path.Combine(outDir, Path.GetFileName(f)));
-    Console.WriteLine($"placed icon + marker at {sites.Count} sites ({posts.Count} posts) in {targets.Count} sectors -> {outDir} ({files.Count} files)");
+    mt.GetMethod("SaveSector", bf)!.Invoke(ev, new object[] { home, outDir, merged!, nodes, Array.Empty<ulong>() });
+    var name = Path.GetFileNameWithoutExtension(Sector.SectorFileNameFromSectorCoords(home));
+    var anyDesc = Directory.GetFiles(Path.Combine(Path.GetDirectoryName(mbd)!, "usa"), "*.desc").First();
+    File.Copy(anyDesc, Path.Combine(outDir, name + ".desc"));
+    Console.WriteLine($"placed {ev.MapItems.Count} items ({sites.Count} sites, {posts.Count} posts) in new sector {name} -> {outDir}");
 }

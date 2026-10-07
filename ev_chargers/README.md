@@ -1,14 +1,14 @@
 ﻿# EV chargers (ATS 1.61)
 
 ATS has charger props on the map but no charging function. This folder finds every charger on the base map and all
-installed state DLC maps and marks it automatically (no map editor needed): green plug icon on the world map / GPS and
-a green plug marker next to the charger. Charging = F7 > Emergency recharge at a marked charger; the mod overrides
-`def/economy_data.sii` (copied from `C:\ATSExtract`) so it gives a full battery at regular price in 20 min.
+installed state DLC maps (`data/chargers.csv`) and provides a green plug world-map icon and plug marker model.
+Charging = F7 > Emergency recharge at a charger; the mod overrides
+`def/economy_data.sii` (copied from `C:\ATSExtract`) so it gives +300 kWh at regular price in 20 min (greyed out if 300 kWh do not fit into the battery).
 
 | Path | What |
 |---|---|
 | `extract_maps.py` | extracts base_map + every state DLC map into `C:\ATSExtract\map_all`, writes `sector_source.csv` |
-| `ChargerFinder/` | .NET + TruckLib: lists all chargers -> `data/chargers.csv`; `--place` adds icon + marker per charger site and writes only the changed map sectors to `ev_marker/mod/map/usa` |
+| `ChargerFinder/` | .NET + TruckLib: lists all chargers -> `data/chargers.csv`; `--place` adds a plug icon per charger site in one extra map sector (`ev_marker/mod/map/usa`, experimental) |
 | `data/chargers.csv` | result: 128 objects = 38 charger posts at 32 sites + 90 standalone charging power boxes (not marked) |
 | `ev_marker/build_ev_marker.py` | draws the plug art, writes the marker model and the map icon, compiles with resconvert |
 | `ev_marker/package_ev_marker.py` | adds defs (marker model `ev plug marker`, map icon `road_ev_plug`), emergency-recharge override (`def/economy_data.sii`, optional arg: extract dir), packs + installs `ev_chargers.scs` |
@@ -19,9 +19,9 @@ a green plug marker next to the charger. Charging = F7 > Emergency recharge at a
 - Prefabs: none of the 6024 prefab models (base + all state DLCs) uses a charger material, so no truck stop or gas
   station has a built-in charger (ATS 1.61). `chargerPrefabs` in `Program.cs` is ready if SCS adds some.
 - Posts within 100 m are one site (one icon + marker). Power boxes are never next to a post, so they are not marked.
-- Map mod: TruckLib re-saves the changed sectors (+ a neighbour sector if an item crossing the border moves there);
-  `--place` checks that every original item is still in the shipped sectors and only the new icons/markers are added.
-  These sectors replace the game's, so rebuild after an ATS map update.
+- Map mod: one new sector at an unused coordinate holds only the 32 plug icons (3D markers are not placed: models load only near the player, and this sector is off the map) (written with TruckLib's own
+  sector writer); its `.desc` is copied from a game sector (ATS 1.61 uses 40 bytes, TruckLib writes 32). The game
+  may log "Excessive sector boundary" for it.
 
 ## Build
 ```
@@ -31,3 +31,5 @@ cd ../ChargerFinder && dotnet run --place
 cd ../ev_marker && python package_ev_marker.py
 ```
 Generated (git-ignored): `ev_marker/project/`, `ev_marker/mod/`, `*.scs`, `ChargerFinder/bin|obj`.
+
+`--place` (map icons, **experimental**) writes the plug icons into ONE extra sector (`map/usa/sec-0040-0030.*`); no SCS sector is replaced (re-saving SCS sectors with TruckLib 0.5.1 crashed ATS 1.61). Keep the order above: `build_ev_marker.py` clears `ev_marker\mod`. If a save does not load, build without `--place`.

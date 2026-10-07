@@ -9,7 +9,7 @@ and ignored by git.
 | Folder | Mod / tool | Output |
 |---|---|---|
 | [`vnl_electric`](vnl_electric/README.md) | Volvo VNL Electric: VNL 2025 on electrified frames, VNR battery packs + centre pack, e-axles 460/920 kW, "Phoenix Trucking" paint | `vnl_electric_concept.scs` |
-| [`ev_chargers`](ev_chargers/README.md) | finds every EV charger on the map (base + all owned state DLCs) and marks it automatically: plug world-map icon + plug marker; F7 emergency recharge = charger stop | `ev_chargers.scs` |
+| [`ev_chargers`](ev_chargers/README.md) | finds every EV charger on the map (base + all owned state DLCs) -> `data/chargers.csv`; plug icon + marker model; F7 emergency recharge = charger stop | `ev_chargers.scs` |
 
 ---
 
@@ -80,16 +80,16 @@ python make_vnl_electric.py --game C:\ATSExtract --donor volvo.vnl2025 --pack
 ### EV chargers
 ```powershell
 cd ev_chargers\ev_marker; python build_ev_marker.py          # marker model + icon (wipes ev_marker\mod)
-cd ..\ChargerFinder; dotnet run --place                      # -> data\chargers.csv + map sectors with the icons/markers
+cd ..\ChargerFinder; dotnet run --place                      # -> data\chargers.csv + extra map sector with the plug icons
 cd ..\ev_marker; python package_ev_marker.py                 # -> ev_chargers.scs, installed to the mod folder
 ```
-Keep this order: `build_ev_marker.py` clears `ev_marker\mod`, where `--place` writes the map sectors.
+`--place` (map icons, **experimental**) writes the plug icons into ONE extra sector (`map/usa/sec-0040-0030.*`); no SCS sector is replaced (re-saving SCS sectors with TruckLib 0.5.1 crashed ATS 1.61). Keep the order above: `build_ev_marker.py` clears `ev_marker\mod`. If a save does not load, build without `--place`.
 
 ---
 
 ## 3. Play / test
 1. ATS > Mod Manager: enable **Volvo VNL Electric** and **EV Chargers** (EV Chargers above other map mods).
-   Chargers show a green plug on the world map; stop there and use F7 > Emergency recharge.
+   Chargers show a green plug on the world map (`ev_chargers/data/chargers.csv` lists them); stop there and use F7 > Emergency recharge.
 2. Volvo dealer: VNL Electric. Use a newly bought truck after rebuilding (old saves may keep removed parts).
 3. Problems: `Documents\American Truck Simulator\game.log.txt` (search for `vnl_e`, `<ERROR>`).
 
