@@ -92,6 +92,12 @@ cd ev_chargers\ev_marker; python build_ev_marker.py          # marker model + ic
 cd ..\ChargerFinder; dotnet run --place --fuel-test all     # -> data\chargers.csv, plug icons, refuel spots at every charger
 cd ..\ev_marker; python package_ev_marker.py                 # -> ev_chargers.scs, installed to the mod folder
 ```
+Add `--workshop` to `package_ev_marker.py` to also write `ATS-Mods\workshop\ev_chargers\` (uploader folder, same
+`versions.sii` + `universal\` layout as the VNL) and `workshop\ev_chargers_preview.jpg`. Note: the Workshop Uploader
+rejects the map sector files (`.base/.data/.aux/.snd/.desc`, "unsupported extension"), so the full EV Chargers mod
+cannot currently be uploaded; distribute `ev_chargers.scs` directly instead (attached to the GitHub release, linked from
+the VNL description: https://github.com/barnstee/ATS-Mods/releases/latest/download/ev_chargers.scs). For the Workshop VNL build
+use `make_vnl_electric.py --game C:\ATSExtract --donor volvo.vnl2025 --pump-charging --workshop` so it charges at pumps.
 `--place` (map icons, **experimental**) writes the plug icons into ONE extra sector (`map/usa/sec-0040-0030.*`); no SCS sector is replaced (re-saving SCS sectors with TruckLib 0.5.1 crashed ATS 1.61). Keep the order above: `build_ev_marker.py` clears `ev_marker\mod`. If a save does not load, build without `--place`.
 
 ---

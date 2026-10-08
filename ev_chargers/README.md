@@ -1,8 +1,7 @@
 ﻿# EV chargers (ATS 1.61)
 
-ATS has charger props on the map but no charging function. This folder finds every charger on the base map and all
-installed state DLC maps (`data/chargers.csv`) and provides a green plug world-map icon and plug marker model.
-Charging = drive into a bay beside a charger and refuel like at a pump (full charge), see "Charging at the chargers" below.
+ATS has charger props on the map but no charging function. This mod enables every charger on the base map and all installed state DLC maps and provides a green plug world-map icon.
+Drive into a bay beside a charger and refuel like at a pump (full charge).
 
 | Path | What |
 |---|---|

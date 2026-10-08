@@ -4,6 +4,7 @@ Volvo VNL Electric concept
 - Battery packs from the Volvo VNR Electric, sized to each frame in Standard, ER and XR range.
 - An approximation of the Volvo e-axle is used as motors - 460 kW per driven axle, dual e-axle 920 kW on 6x4 frames. This creates space for a 3rd battery pack within the frame.
 - VNL Electric factory paint job with an optional new logo on the sleeper cabs.
+- Charging: drive up to any gas station pump - or to a marked EV charger with the "EV Chargers - charge here" mod, download: https://github.com/barnstee/ATS-Mods/releases/latest/download/ev_chargers.scs - and refuel like a diesel truck; the battery fills completely (shown as fuel, gallons/litres).
 
 Requires the Volvo VNL (2025) DLC and Ownable Volvo VNR Electric mod.
 
