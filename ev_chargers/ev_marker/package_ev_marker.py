@@ -11,7 +11,7 @@ def write(rel, text):
     open(p, "w", encoding="utf-8", newline="\n").write(text)
 
 write("manifest.sii", "SiiNunit\n{\nmod_package : .package_name\n{\n\tpackage_version: \"1.0\"\n\tdisplay_name: \"EV Chargers - charge here\"\n\tauthor: \"Erich Barnstedt\"\n\tcategory[]: \"map\"\n\tdescription_file: \"description.txt\"\n\tcompatible_versions[]: \"1.61.*\"\n}\n}\n")
-write("description.txt", "Marks every EV charger on the map (base map + state DLCs, 32 sites) with a green plug icon on the world map / GPS.\nATS has no charging trigger: below 20 miles of range, stop at a marked charger and use F7 > emergency recharge\n(game rule: +100 kWh per recharge).\n")
+write("description.txt", "Every EV charger on the map (base map + state DLCs, 32 sites) becomes a charging stop: drive into the bay\nbeside the charger and refuel like at a pump (full battery). Green plug icon on the world map / GPS next to the\ncharger. Needs a truck whose e-motor is handled as a refuelable engine (e.g. Volvo VNL Electric built with --pump-charging).\n")
 write("material/ui/map/road/road_ev_plug.mat", "effect : \"ui.rfx\" {\n\ttexture : \"texture\" {\n\t\tsource : \"road_ev_plug.tobj\"\n\t\tu_address : clamp\n\t\tv_address : clamp\n\t\tmip_filter : none\n\t}\n}\n")
 write("def/world/animated_model.ev_chargers.sii", "SiiNunit\n{\nanimated_model_data : anim_mdl.ev_plug\n{\n\tname: \"ev plug marker\"\n\tmodel: \"/model/ev_chargers/plug_marker.pmd\"\n\tanimations[]: \"/model/ev_chargers/plug_marker_spin.pma\"\n\tprobability_day: 1.0\n\tprobability_night: 1.0\n}\n}\n")
 write("def/world/model.ev_chargers.sii", "SiiNunit\n{\nmodel_def : model.ev_plug\n{\n\tmodel_desc: \"/model/ev_chargers/plug_marker.pmd\"\n\tname: \"ev plug marker\"\n}\n}\n")

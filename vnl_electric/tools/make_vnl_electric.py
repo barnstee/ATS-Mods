@@ -336,12 +336,29 @@ def fix_icons(tgt):
     log(f"[ICO]  fixed missing preview icons in {n} files")
 
 
+def pump_charging(tgt):
+    """ATS only lets electric engines recharge via F7 emergency recharge (fixed +100 kWh). Without 'type: electric' the
+    battery is handled like a fuel tank: a gas trigger (spawn point GasStation) fills it completely, e.g. the one that
+    ev_chargers places at a charger (ChargerFinder --place --fuel-test). Side effect: shown in gallons, diesel price."""
+    n = 0
+    edir = os.path.join(tgt, "engine")
+    for f in os.listdir(edir):
+        if f.endswith(".sii"):
+            p = os.path.join(edir, f); s = rd(p)
+            s2 = re.sub(r"^[ \t]*type[ \t]*:[ \t]*electric[ \t]*\r?\n", "", s, flags=re.M)
+            if s2 != s:
+                wr(p, s2); n += 1
+    log(f"[PMP]  pump charging: electric engine type removed from {n} engines (test)")
+
+
 def main():
     a = argparse.ArgumentParser()
     a.add_argument("--game", required=True); a.add_argument("--donor"); a.add_argument("--vnr", default="volvo.vnr_e")
     a.add_argument("--range", type=float, default=1.75); a.add_argument("--xr", type=float, default=2.5)
     a.add_argument("--vnr-interior", action="store_true"); a.add_argument("--list", action="store_true")
     a.add_argument("--pack", action="store_true")
+    a.add_argument("--pump-charging", action="store_true",
+                   help="test: e-axles without the electric engine type, so gas trigger prefabs (placed at the EV chargers) fill the battery")
     a.add_argument("--workshop", nargs="?", const=os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "workshop")),
                    help="also write the unpacked Steam Workshop folder + preview.jpg (default ATS-Mods\\workshop; implies --pack)")
     a.add_argument("--out", default=os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -369,6 +386,8 @@ def main():
     ev_engines(tgt, TARGET, rd, wr, log)
     ev_paintjob(tgt, o.out, TARGET, wr, log)
     fix_icons(tgt)
+    if o.pump_charging:
+        pump_charging(tgt)
     wr(os.path.join(o.out, "build_log.txt"), "\n".join(LOG) + "\n")
     if o.pack:
         scs = os.path.join(os.path.dirname(o.out), "vnl_electric_concept.scs")

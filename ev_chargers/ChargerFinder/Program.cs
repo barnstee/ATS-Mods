@@ -56,6 +56,7 @@ foreach (var r in rows) Console.WriteLine(r);
 // Re-saving SCS sectors with TruckLib 0.5.1 crashed ATS 1.61 (it re-encodes every item). So nothing of SCS is re-saved:
 // all icons/markers go into one new sector at an unused coordinate (items outside their sector's bounds only give an
 // "Excessive sector boundary" warning). The .desc (40 bytes in 1.61, TruckLib writes 32) is copied from a game sector.
+const float IconOffset = 50f;                        // m east of the charger: plug icon next to (not on) the gas symbol
 if (args.Contains("--place"))
 {
     var posts = chargers.Where(c => c.model != "ia_5e004").Select(c => c.pos).ToList();
@@ -69,7 +70,7 @@ if (args.Contains("--place"))
     foreach (var s in sites)
     {
         var c = new Vector3(s.Average(p => p.X), s.Average(p => p.Y), s.Average(p => p.Z));
-        var icon = MapOverlay.Add(ev, c, OverlayType.RoadName);   // world map / GPS icon (material/ui/map/road/road_ev_plug)
+        var icon = MapOverlay.Add(ev, c + new Vector3(IconOffset, 0, 0), OverlayType.RoadName);   // beside the gas symbol of the refuel spots   // world map / GPS icon (material/ui/map/road/road_ev_plug)
         icon.Look = "ev_plug";
         // no 3D marker: models are aux items, streamed only for the sector around the player - this sector is off the map
     }
@@ -100,4 +101,166 @@ if (args.Contains("--place"))
     var anyDesc = Directory.GetFiles(Path.Combine(Path.GetDirectoryName(mbd)!, "usa"), "*.desc").First();
     File.Copy(anyDesc, Path.Combine(outDir, name + ".desc"));
     Console.WriteLine($"placed {ev.MapItems.Count} items ({sites.Count} sites, {posts.Count} posts) in new sector {name} -> {outDir}");
+}
+
+// ---- --fuel-test <charger uid>: gas trigger prefab at one charger, spliced into its REAL sector ----
+// The game only activates gas spots (prefab spawn point GasStation) in the sectors around the truck, so the prefab
+// must be in the charger's own sector. Re-saving that sector with TruckLib 0.5.1 breaks it (float rounding of node
+// positions, items moved between files/sectors), so the original files are kept byte for byte: the new prefab, its
+// service item and their nodes are appended to the item/node lists of .base and the payload to .data.
+var ftIdx = Array.IndexOf(args, "--fuel-test");
+const float BaySide = 3.5f;                          // m from the charger post to the middle of the parking bay
+if (ftIdx >= 0)
+{
+    // comma separated charger post uids; all chargers of one sector are spliced in one go
+    var uids = args[ftIdx + 1] == "all"                 // all charger posts (power boxes are not chargers)
+        ? chargers.Where(c => c.model != "ia_5e004").Select(c => c.uid).ToList()
+        : args[ftIdx + 1].Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => Convert.ToUInt64(s, 16)).ToList();
+    var ppd = TruckLib.Models.Ppd.PrefabDescriptor.Open(@"C:\ATSExtract\prefab\gas\us_gas_station_trigger_only.ppd");
+    var sp = ppd.SpawnPoints.First(s => s.Type.ToString() == "GasStation").Position - ppd.Nodes[0].Position;
+    var srcDir = Path.Combine(Path.GetDirectoryName(mbd)!, "usa");
+    var dstDir = Path.GetFullPath(Path.Combine("..", "ev_marker", "mod", "map", "usa"));
+    Directory.CreateDirectory(dstDir);
+    foreach (var grp in uids.Select(u => (Model)map.MapItems[u]).GroupBy(m => Map.GetSectorOfCoordinate(m.Node.Position)))
+    {
+        var gm = new Map();
+        var auxNodes = new List<Node>();                   // no aux items any more (plug sign removed)
+        foreach (var post in grp)
+        {
+            var rot = post.Node.Rotation;
+            // one gas spot in each parking bay beside the charger island (post-local z = sideways; x is along the island), not on the post itself
+            foreach (var side in new[] { -BaySide, BaySide })
+            {
+                var spot = post.Node.Position + Vector3.Transform(new Vector3(0, 0, side), rot);
+                var pos = spot - Vector3.Transform(new Vector3(sp.X, 0, sp.Z), rot);   // prefab placed so its GasStation spot is in the bay
+                var gas = Prefab.Add(gm, pos, "02003", ppd, rot);
+                gas.Variant = "default"; gas.Look = "asphalt"; gas.TerrainShadows = false;   // as SCS's own "us gas / trigger only" instances
+                Console.WriteLine($"fuel test: charger {post.Uid:X}: gas spot {(side < 0 ? "left " : "right")} at {spot} (prefab {gas.Uid:X})");
+            }
+        }
+        var secName = Path.GetFileNameWithoutExtension(Sector.SectorFileNameFromSectorCoords(grp.Key));
+        var newBase = gm.MapItems.Values.Where(x => x.ItemFile == ItemFile.Base).OrderBy(x => x.Uid).ToList();
+        var newAux = gm.MapItems.Values.Where(x => x.ItemFile == ItemFile.Aux).OrderBy(x => x.Uid).ToList();
+        var baseNodes = gm.Nodes.Values.OfType<Node>().Where(n => !auxNodes.Contains(n)).OrderBy(x => x.Uid).ToList();
+        // TruckLib writes a placeholder k-DOP bounding box (1..2 near the map origin) for new items; the game culls and
+        // activates items by that box, so new items were never drawn / never triggered. Give every new item a real box.
+        foreach (var it in gm.MapItems.Values) SectorSplice.SetBounds(it, gm);
+        SectorSplice.Patch(Path.Combine(srcDir, secName), Path.Combine(dstDir, secName), newBase, baseNodes, newAux, auxNodes);
+        Console.WriteLine($"  -> {newBase.Count} base items, {baseNodes.Count} base nodes, {newAux.Count} aux items spliced into {secName}");
+    }
+}
+
+static class SectorSplice
+{
+    // k-DOP box of a new item: its nodes +-8 m horizontally, 3 m below to 8 m above. Axes as written by SCS:
+    // x, y, z, (x+z)/2, (x-z)/2 (checked against the bounds of an original charger post).
+    public static void SetBounds(MapItem item, Map owner)
+    {
+        var pts = owner.Nodes.Values.OfType<Node>().Where(n => n.ForwardItem == item || n.BackwardItem == item).Select(n => n.Position).ToList();
+        if (item is Service sv) pts.Add(sv.Node.Position);
+        if (pts.Count == 0) throw new InvalidOperationException($"no nodes for {item.Uid:X}");
+        const float H = 8, Down = 3, Up = 8;
+        float x0 = pts.Min(p => p.X) - H, x1 = pts.Max(p => p.X) + H, z0 = pts.Min(p => p.Z) - H, z1 = pts.Max(p => p.Z) + H;
+        float y0 = pts.Min(p => p.Y) - Down, y1 = pts.Max(p => p.Y) + Up;
+        var kdop = typeof(MapItem).GetProperty("Kdop", BF)!.GetValue(item)!;
+        var mins = (float[])kdop.GetType().GetProperty("Minimums", BF)!.GetValue(kdop)!;
+        var maxs = (float[])kdop.GetType().GetProperty("Maximums", BF)!.GetValue(kdop)!;
+        float[] lo = { x0, y0, z0, (x0 + z0) / 2, (x0 - z1) / 2 }, hi = { x1, y1, z1, (x1 + z1) / 2, (x1 - z0) / 2 };
+        Array.Copy(lo, mins, 5); Array.Copy(hi, maxs, 5);
+    }
+
+    static readonly System.Reflection.BindingFlags BF = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Instance;
+    static object Ser(ItemType t) => typeof(Map).Assembly.GetTypes().First(x => x.Name == "MapItemSerializerFactory").GetMethod("Get", BF)!.Invoke(null, new object[] { t })!;
+
+    // copies <src>.* to <dst>.*: new base items + nodes appended to .base (payloads to .data), new aux items + nodes to .aux;
+    // every original item and node stays byte for byte
+    public static void Patch(string src, string dst, List<MapItem> baseItems, List<Node> baseNodes, List<MapItem> auxItems, List<Node> auxNodes, Func<MapItem, bool>? editAux = null)
+    {
+        foreach (var ext in new[] { "snd", "desc", "layer" })
+            if (File.Exists(src + "." + ext)) File.Copy(src + "." + ext, dst + "." + ext, true);
+        var orig = Splice(src + ".base", dst + ".base", baseItems, baseNodes);
+        Splice(src + ".aux", dst + ".aux", auxItems, auxNodes, editAux);
+        var d = File.ReadAllBytes(src + ".data");
+        using var r = new BinaryReader(new MemoryStream(d));
+        new Header().Deserialize(r);
+        int hdrEnd = (int)r.BaseStream.Position;
+        var entries = new List<(ulong uid, byte[] bytes)>();
+        while (true)
+        {
+            long p0 = r.BaseStream.Position;
+            var uid = r.ReadUInt64();
+            if (uid == ulong.MaxValue) break;
+            var it = orig[uid]; var ser = Ser(it.ItemType);
+            ser.GetType().GetMethod("DeserializeDataPayload")!.Invoke(ser, new object[] { r, it });
+            entries.Add((uid, d[(int)p0..(int)r.BaseStream.Position]));
+        }
+        bool sorted = entries.Zip(entries.Skip(1)).All(p => p.First.uid < p.Second.uid);
+        foreach (var it in baseItems.Where(x => (bool)typeof(MapItem).GetProperty("HasDataPayload", BF)!.GetValue(x)!))
+        {
+            using var m = new MemoryStream(); using var w0 = new BinaryWriter(m);
+            w0.Write(it.Uid); var ser = Ser(it.ItemType);
+            ser.GetType().GetMethod("SerializeDataPayload")!.Invoke(ser, new object[] { w0, it }); w0.Flush();
+            entries.Add((it.Uid, m.ToArray()));
+        }
+        using var ms2 = new MemoryStream(); using var w2 = new BinaryWriter(ms2);
+        w2.Write(d, 0, hdrEnd);
+        foreach (var x in (sorted ? entries.OrderBy(x => x.uid) : entries.AsEnumerable())) w2.Write(x.bytes);
+        w2.Write(ulong.MaxValue); w2.Flush(); File.WriteAllBytes(dst + ".data", ms2.ToArray());
+        Console.WriteLine($"  .data: {entries.Count} entries, original order sorted by uid: {sorted}");
+    }
+
+    // SCS keeps items and nodes sorted by uid (the game looks them up by binary search), so the new ones are merged in
+    // at their sorted position; the bytes of every original item / node are copied unchanged
+    static Dictionary<ulong, MapItem> Splice(string src, string dst, List<MapItem> items, List<Node> nodes, Func<MapItem, bool>? edit = null)
+    {
+        var b = File.ReadAllBytes(src);
+        var orig = new Dictionary<ulong, MapItem>();
+        using var r = new BinaryReader(new MemoryStream(b));
+        new Header().Deserialize(r);
+        int hdrEnd = (int)r.BaseStream.Position;
+        var nItems = r.ReadUInt32();
+        var all = new List<(ulong uid, byte[] bytes)>();
+        for (int i = 0; i < nItems; i++)
+        {
+            long p0 = r.BaseStream.Position;
+            var ser = Ser((ItemType)r.ReadInt32());
+            var it = (MapItem)ser.GetType().GetMethod("Deserialize")!.Invoke(ser, new object[] { r })!;
+            if (edit != null && edit(it))                       // changed original item: re-encode just this one
+            {
+                using var m2 = new MemoryStream(); using var w3 = new BinaryWriter(m2);
+                w3.Write((int)it.ItemType); ser.GetType().GetMethod("Serialize")!.Invoke(ser, new object[] { w3, it }); w3.Flush();
+                all.Add((it.Uid, m2.ToArray()));
+            }
+            else all.Add((it.Uid, b[(int)p0..(int)r.BaseStream.Position]));
+            orig[it.Uid] = it;
+        }
+        foreach (var it in items)
+        {
+            using var m = new MemoryStream(); using var w0 = new BinaryWriter(m);
+            w0.Write((int)it.ItemType); var ser = Ser(it.ItemType); ser.GetType().GetMethod("Serialize")!.Invoke(ser, new object[] { w0, it }); w0.Flush();
+            all.Add((it.Uid, m.ToArray()));
+        }
+        var nNodes = r.ReadUInt32();
+        var ctor = typeof(Node).GetConstructors(BF).First(c => c.GetParameters().Length == 1 && c.GetParameters()[0].ParameterType == typeof(bool));
+        var allNodes = new List<(ulong uid, byte[] bytes)>();
+        for (int i = 0; i < nNodes; i++)
+        {
+            long p0 = r.BaseStream.Position;
+            var nd = (Node)ctor.Invoke(new object[] { false }); nd.Deserialize(r, null);
+            allNodes.Add((nd.Uid, b[(int)p0..(int)r.BaseStream.Position]));
+        }
+        int nodesEnd = (int)r.BaseStream.Position;
+        foreach (var n in nodes)
+        {
+            using var m = new MemoryStream(); using var w0 = new BinaryWriter(m); n.Serialize(w0); w0.Flush();
+            allNodes.Add((n.Uid, m.ToArray()));
+        }
+        using var ms = new MemoryStream(); using var w = new BinaryWriter(ms);
+        w.Write(b, 0, hdrEnd);
+        w.Write((uint)all.Count); foreach (var x in all.OrderBy(x => x.uid)) w.Write(x.bytes);
+        w.Write((uint)allNodes.Count); foreach (var x in allNodes.OrderBy(x => x.uid)) w.Write(x.bytes);
+        w.Write(b, nodesEnd, b.Length - nodesEnd);                 // vis-area children list, unchanged
+        w.Flush(); File.WriteAllBytes(dst, ms.ToArray());
+        return orig;
+    }
 }

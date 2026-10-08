@@ -2,8 +2,7 @@
 
 ATS has charger props on the map but no charging function. This folder finds every charger on the base map and all
 installed state DLC maps (`data/chargers.csv`) and provides a green plug world-map icon and plug marker model.
-Charging = F7 > Emergency recharge at a charger. For electric trucks ATS 1.61 offers it only when the State of Charge (SoC) is low
-and always adds 100 kWh for about $350.
+Charging = drive into a bay beside a charger and refuel like at a pump (full charge), see "Charging at the chargers" below.
 
 | Path | What |
 |---|---|
@@ -27,9 +26,19 @@ and always adds 100 kWh for about $350.
 ```
 python extract_maps.py --game <ATS dir> --extractor <extractor.exe>
 cd ev_marker && python build_ev_marker.py
-cd ../ChargerFinder && dotnet run --place
+cd ../ChargerFinder && dotnet run --place --fuel-test all
 cd ../ev_marker && python package_ev_marker.py
 ```
 Generated (git-ignored): `ev_marker/project/`, `ev_marker/mod/`, `*.scs`, `ChargerFinder/bin|obj`.
 
 `--place` (map icons, **experimental**) writes the plug icons into ONE extra sector (`map/usa/sec-0040-0030.*`); no SCS sector is replaced (re-saving SCS sectors with TruckLib 0.5.1 crashed ATS 1.61). Keep the order above: `build_ev_marker.py` clears `ev_marker\mod`. If a save does not load, build without `--place`.
+
+## Charging at the chargers (refuel spots)
+`dotnet run --place --fuel-test all` puts the invisible gas trigger prefab (`us gas / trigger only`, as SCS uses at
+gas stations) in the parking bay on each side of every charger post (3.5 m sideways, `BaySide`), spliced into the
+charger's own map sector: the original sector files are kept byte for byte, the new items are merged in sorted by uid
+and get real k-DOP bounding boxes (TruckLib writes a placeholder box near the map origin, so the game never drew or
+activated them). Re-saving SCS sectors with TruckLib itself breaks them (float rounding of node positions), so it is
+not used for that. The patched sectors replace the game's: rebuild after an ATS map update.
+The game only offers refuelling to non-electric engines, so the truck must be built with `--pump-charging`
+(`make_vnl_electric.py`): the battery then fills like a tank (shown in gallons, fuel price).
