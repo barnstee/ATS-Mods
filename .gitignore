@@ -436,6 +436,9 @@ vnl_electric/automat/
 vnl_electric/blender/
 vnl_electric/build_log.txt
 vnl_electric/tools/bin/
+kenworth_phoenix/mod/
+kenworth_phoenix/project/
+kenworth_phoenix/*.png
 workshop/
 ev_chargers/ev_marker/project/
 ev_chargers/ev_marker/mod/

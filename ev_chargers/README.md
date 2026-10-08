@@ -2,8 +2,8 @@
 
 ATS has charger props on the map but no charging function. This folder finds every charger on the base map and all
 installed state DLC maps (`data/chargers.csv`) and provides a green plug world-map icon and plug marker model.
-Charging = F7 > Emergency recharge at a charger; the mod overrides
-`def/economy_data.sii` (copied from `C:\ATSExtract`) so it gives +300 kWh at regular price in 20 min (greyed out if 300 kWh do not fit into the battery).
+Charging = F7 > Emergency recharge at a charger. For electric trucks ATS 1.61 offers it only when the State of Charge (SoC) is low
+and always adds 100 kWh for about $350.
 
 | Path | What |
 |---|---|
@@ -11,7 +11,7 @@ Charging = F7 > Emergency recharge at a charger; the mod overrides
 | `ChargerFinder/` | .NET + TruckLib: lists all chargers -> `data/chargers.csv`; `--place` adds a plug icon per charger site in one extra map sector (`ev_marker/mod/map/usa`, experimental) |
 | `data/chargers.csv` | result: 128 objects = 38 charger posts at 32 sites + 90 standalone charging power boxes (not marked) |
 | `ev_marker/build_ev_marker.py` | draws the plug art, writes the marker model and the map icon, compiles with resconvert |
-| `ev_marker/package_ev_marker.py` | adds defs (marker model `ev plug marker`, map icon `road_ev_plug`), emergency-recharge override (`def/economy_data.sii`, optional arg: extract dir), packs + installs `ev_chargers.scs` |
+| `ev_marker/package_ev_marker.py` | adds defs (marker model `ev plug marker`, map icon `road_ev_plug`), packs + installs `ev_chargers.scs` |
 
 ## How chargers are found
 - Charger models = every model whose materials use a charger texture (`ca_e_charger*`, `e-charger-station*`,

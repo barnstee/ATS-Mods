@@ -9,7 +9,8 @@ and ignored by git.
 | Folder | Mod / tool | Output |
 |---|---|---|
 | [`vnl_electric`](vnl_electric/README.md) | Volvo VNL Electric: VNL 2025 on electrified frames, VNR battery packs + centre pack, e-axles 460/920 kW, "Phoenix Trucking" paint | `vnl_electric_concept.scs` |
-| [`ev_chargers`](ev_chargers/README.md) | finds every EV charger on the map (base + all owned state DLCs) -> `data/chargers.csv`; plug icon + marker model; F7 emergency recharge = charger stop | `ev_chargers.scs` |
+| [`ev_chargers`](ev_chargers/README.md) | finds every EV charger on the map (base + all owned state DLCs) -> `data/chargers.csv`; plug icon on the world map; charge with F7 emergency recharge | `ev_chargers.scs` |
+| `kenworth_phoenix` | "Phoenix Trucking" paint job (white metallic + logo) for the Kenworth T680 (2014) | `kenworth_phoenix.scs` |
 
 ---
 
@@ -77,6 +78,14 @@ python make_vnl_electric.py --game C:\ATSExtract --donor volvo.vnl2025 --pack
   640x360 Workshop preview image. Upload with *American Truck Simulator - Workshop Uploader* (Steam > Library > Tools).
 - Log: `vnl_electric\build_log.txt`.
 
+### Phoenix Trucking for the Kenworth T680 (2014)
+```powershell
+python kenworth_phoenix\make_kenworth_phoenix.py      # needs dlc_kenworth_t680.scs extracted to C:\ATSExtract
+```
+Projects `vnl_electric\assets\logo.jpg` onto the 76" hi-rise and 52" mid-roof sleepers (sides + back, kept off all windows;
+plain white on the day cab), compiles the masks with the conversion tools, packs and installs
+`kenworth_phoenix.scs`. Rerun after changing the logo.
+
 ### EV chargers
 ```powershell
 cd ev_chargers\ev_marker; python build_ev_marker.py          # marker model + icon (wipes ev_marker\mod)
@@ -89,8 +98,9 @@ cd ..\ev_marker; python package_ev_marker.py                 # -> ev_chargers.sc
 
 ## 3. Play / test
 1. ATS > Mod Manager: enable **Volvo VNL Electric** and **EV Chargers** (EV Chargers above other map mods).
-   Chargers show a green plug on the world map (`ev_chargers/data/chargers.csv` lists them); stop there and use F7 > Emergency recharge.
-2. Volvo dealer: VNL Electric. Use a newly bought truck after rebuilding (old saves may keep removed parts).
+   Chargers show a green plug on the world map (`ev_chargers/data/chargers.csv` lists them). Stop there and use F7 > Emergency recharge when your State of Charge (SoC) is low (game rule for electric trucks: +100 kWh per recharge, about $350).
+2. Volvo dealer: VNL Electric. Kenworth T680 (2014): paint job "Phoenix Trucking" in the truck upgrade shop.
+    Use a newly bought truck after rebuilding (old saves may keep removed parts).
 3. Problems: `Documents\American Truck Simulator\game.log.txt` (search for `vnl_e`, `<ERROR>`).
 
 ## Repository layout
