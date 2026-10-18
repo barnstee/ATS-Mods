@@ -439,6 +439,9 @@ vnl_electric/tools/bin/
 kenworth_phoenix/mod/
 kenworth_phoenix/project/
 kenworth_phoenix/*.png
+rubber_duck_r/mod/
+rubber_duck_r/src/
+rubber_duck_r/project/
 workshop/
 ev_chargers/ev_marker/project/
 ev_chargers/ev_marker/mod/

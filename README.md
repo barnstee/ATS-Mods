@@ -86,6 +86,24 @@ Projects `vnl_electric\assets\logo.jpg` onto the 76" hi-rise and 52" mid-roof sl
 plain white on the day cab), compiles the masks with the conversion tools, packs and installs
 `kenworth_phoenix.scs`. Rerun after changing the logo.
 
+### Rubber Duck parts for the Mack R Series (personal use only)
+```powershell
+python rubber_duck_r\make_rubber_duck_r.py   # --workshop <...\workshop\content\270880> --addon <Mack_R_addon_v1.1.scs>
+```
+chrome bulldog on the cab sides removed (`BULLDOG`, also its black silhouette baked into the cab AO texture `700cab_ao`, filled from the surrounding AO into a copy `cab_ao`), fifth wheel coupling moved back. The battery box hanger (round plug + bracket) is dropped, since it would sit on the cab side above the raised box. Air tanks
+(workshop 1463066263) with the chrome materials turned into white gloss. The bull bar comes from the Pinnacle Rubber Duck
+mod (workshop 3593043044), scaled and moved onto the R bull bar with `rubber_duck_r\pim_tools.py`, side loops lifted above the headlamps (`BULL_LIFT`), centre section unchanged. Compiles them with the
+conversion tools, and packs and installs `rubber_duck_r.scs`. Needs ConverterPIX and all three mods installed
+(the Mack R add-on `Mack_R_addon_v1.1.scs` is read from the mod folder). The output contains other authors' assets,
+so never commit or publish it.
+
+The same mod also changes the SCS owned fuel tank trailer: no front mudflaps (incl. their hanger), and the ladder sits in
+the middle of the tank on the right side (one ladder model per chassis length, `FT_*`). Recompiled copies of all its
+chassis models (chassis definitions overridden) drop the front and rear fender decks (mudguards incl. supports, `FT_DECK`)
+and the ladder on the rear head; the aluminium front fender accessory has no model. The trailer models are
+extracted from `base_vehicle.scs` into `C:\ATSExtract` automatically. On non-53' chassis the ladder is a new shop item
+(re-buy it once).
+
 ### EV chargers
 ```powershell
 cd ev_chargers\ev_marker; python build_ev_marker.py          # marker model + icon (wipes ev_marker\mod)
@@ -107,6 +125,7 @@ use `make_vnl_electric.py --game C:\ATSExtract --donor volvo.vnl2025 --pump-char
    Chargers show a green plug on the world map (`ev_chargers/data/chargers.csv` lists them). Drive into a bay beside the charger
    and refuel like at a pump (full charge); needs the VNL built with `make_vnl_electric.py ... --pump-charging`.
 2. Volvo dealer: VNL Electric. Kenworth T680 (2014): paint job "Phoenix Trucking" in the truck upgrade shop.
+   Mack R: grill and headlights "Rubber Duck White", bumper "Rubber Duck Bullbar" in the upgrade shop (Rubber Duck R mod above Mack R add-on, Mack R Series, Pinnacle Rubber Duck).
     Use a newly bought truck after rebuilding (old saves may keep removed parts).
 3. Problems: `Documents\American Truck Simulator\game.log.txt` (search for `vnl_e`, `<ERROR>`).
 
