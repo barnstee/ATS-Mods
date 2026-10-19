@@ -7,7 +7,7 @@ Models are converted with ConverterPIX and recompiled with the SCS conversion to
 Load order (top = highest): rubber_duck_r.scs > Mack R add-on > Mack R Series > Pinnacle Rubber Duck.
 The output contains assets of other authors - never publish it.
 """
-import argparse, os, re, shutil, struct, subprocess, sys, zipfile
+import argparse, math, os, re, shutil, struct, subprocess, sys, zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -101,6 +101,16 @@ FT_DECK = (0.58, 1.32, 0.78, 1.35)         # fender deck: |x| from..to, y from..
 # real truck; only the side loops (y 0.42-0.58 in front of the R headlamps) are lifted unscaled by BULL_LIFT.
 BULL_LIFT = 0.26
 BULL_Y = [(0.22, 0.22), (0.40, 0.40 + BULL_LIFT), (0.62, 0.62 + BULL_LIFT), (1.2, 1.2)]
+BULL_BASE = 0.3                            # bull bar: above this the loops are stretched to follow the hood outline
+BULL_GAP = 0.03                            # centre loop top this far above the hood crown
+BULL_TUBE = 0.04                           # tube diameter of the loops
+BULL_SLOPE_IN = 0.04                       # centre loop: the slopes start this far before the original corner bend
+BULL_ROUND = 0.08                          # radius of the rounded corners at both ends of the slopes
+BULL_SIDE_IN = 0.015                       # side loop tops reach this far into the centre posts
+BULL_SIDE_RAIL = 0.68                      # side loop tops meet this centre rail (original height, rails 0.44/0.68/0.93)
+BULL_SIDE_UP = 0.11                        # ... raised by this much (the rail moves with them)
+BULL_CENTRE_W = 0.67                       # centre posts at |x| (original 0.59), side loops stretched to match
+BULL_DEPTH = 0.5                           # cab points up to this far behind the bumper locator form the outline
 
 
 def remap_y(y, pts=BULL_Y):
@@ -560,6 +570,151 @@ open(out + ".pim", "w", encoding="utf-8").write(ttext)
 open(out + ".pit", "w", encoding="utf-8").write(tpit)
 if os.path.isfile(tsrc + ".pic"):
     shutil.copy2(tsrc + ".pic", out + ".pic")
+
+# bull bar: tops of the loops follow the front outline of the hood / fenders (cab model, front view) at BULL_GAP above it
+bl = re.search(r'Locator \{\s*Name: "bumper".*?Position:\s*(\([^)]*\))', ttext, re.S).group(1)
+_, bly, blz = (pim_tools.f2(c) for c in pim_tools.VEC.match(bl).groups())
+cpts = [q for q in pim_tools.positions(ttext) if q[2] < blz + BULL_DEPTH and q[1] > bly + 0.4]
+sil = []
+for i in range(0, 25):
+    ys = [q[1] - bly for q in cpts if abs(abs(q[0]) - i * 0.05) < 0.03]
+    sil.append(max(ys) if ys else None)
+for i, v in enumerate(sil):                                    # gaps (hood / fender joint): interpolate
+    if v is None:
+        a = next(j for j in range(i, -1, -1) if sil[j] is not None)
+        b = next((j for j in range(i, len(sil)) if sil[j] is not None), a)
+        sil[i] = sil[a] + (sil[b] - sil[a]) * ((i - a) / (b - a) if b != a else 0)
+sil = [sum(sil[max(0, i - 1):i + 2]) / len(sil[max(0, i - 1):i + 2]) for i in range(len(sil))]
+sil = [min(sil[:i + 1]) if i * 0.05 > 0.6 else v for i, v in enumerate(sil)]  # outside the hood: only down (mirrors, lamps)
+outline = lambda x: sil[min(len(sil) - 1, int(abs(x) / 0.05))] + BULL_GAP
+bpath = os.path.join(PROJ, *OUT.split("/"), "bumper.pim")
+btext = open(bpath, encoding="utf-8").read()
+ctop = max(hi[1] for lo, hi in [pim_tools.bbox(btext)])
+# like the real truck: side loops (over the headlamps) unchanged with their flat tops, the centre loop gets a flat top at
+# the hood's crown + BULL_GAP and sloped corners from the end of the straight top bar down to the side loop tops
+cw = 0.6
+ctop_y = outline(0)                                            # hood crown in the middle
+fr = (ctop_y - BULL_BASE) / (ctop - BULL_BASE)                 # centre rails + loop: uniform vertical scale
+side_y = BULL_BASE + (BULL_SIDE_RAIL + BULL_TUBE - BULL_BASE) * fr + BULL_SIDE_UP  # side loop tops: top of that rail
+lim = lambda v: max(0.0, min(1.0, v))
+sx = BULL_CENTRE_W / 0.59
+wide = lambda x: (x * sx if abs(x) <= 0.59 else
+                  (0.59 * sx + (abs(x) - 0.59) * (1.2 - 0.59 * sx) / (1.2 - 0.59)) * (1 if x > 0 else -1))
+r = BULL_TUBE / 2
+def follow(q, n, lo, hi):
+    """New position + normal of a bumper vertex (n: its normal)."""
+    x, y, z = q
+    if hi[0] - lo[0] > 1.5:                                   # full width plates / rails
+        return q, n
+    if hi[1] <= BULL_BASE + 0.05 or y <= BULL_BASE:
+        return (wide(x), y, z), n
+    if max(abs(lo[0]), abs(hi[0])) > cw:                       # side loop: top part moved rigidly, posts stretched
+        w = lim((y - BULL_BASE) / (hi[1] - 0.12 - BULL_BASE))
+        nx_ = wide(x)
+        if abs(x) < 0.62:                                      # inner ends: into the centre posts (no gap)
+            nx_ -= BULL_SIDE_IN * (1 if x > 0 else -1)
+        return (nx_, y - (hi[1] - side_y) * w, z), n
+    if hi[1] - lo[1] < 0.1:                                    # centre rails: equally spaced around the one that the
+        k = round((lo[1] - BULL_SIDE_RAIL) / 0.245)            # side loop tops meet; the top one half way up the
+        cy = side_y - r + k * rail_gap if k <= 0 else (q0[1] + q1[1]) / 2   # slopes, shortened to end at them
+        xe = slope_x(cy)
+        if xe < hi[0]:
+            x = x * xe / hi[0]
+        return (wide(x), y + cy - (lo[1] + BULL_TUBE / 2), z), n
+    s = 1 if x >= 0 else -1
+    ax, nx = abs(x), n[0] * s
+    cx, cy = ax - nx * r, y - n[1] * r                         # centre line point of this tube vertex
+    if cy > bend[1] and cx <= flat_end + 0.01:                 # straight top bar: flat, ends moved inward
+        return (wide(s * (cx * ca[0] / flat_end + (ax - cx))), y - ty0 + q0[1], z), n
+    if cy > bend[1]:                                           # corner bend -> rounded corner, slope, rounded corner
+        a = math.atan2(cy - bend[1], cx - bend[0])
+        a = max(0.0, min(math.pi / 2, a))
+        (ncx, ncy), tau = corner_path(1 - a / (math.pi / 2))
+        dl = tau - (a - math.pi / 2)                           # tangent rotation
+        ox, oy = ax - cx, y - cy
+        cs, sn = math.cos(dl), math.sin(dl)
+        rx, ry = ox * cs - oy * sn, ox * sn + oy * cs
+        nnx, nny = nx * cs - n[1] * sn, nx * sn + n[1] * cs
+        return (wide(s * (ncx + rx)), ncy + ry, z), (s * nnx, nny, n[2])
+    if y > BULL_BASE:                                          # posts: shortened to end at the lower rounded corner
+        y = BULL_BASE + (y - BULL_BASE) * (cd[1] - BULL_BASE) / (bend[1] - BULL_BASE)
+    return (wide(x), y, z), n
+
+
+def corner_path(t):
+    """Centre line of the new corner, t 0..1: arc (top bar -> slope), straight slope, arc (slope -> post).
+    Returns the point and the tangent angle."""
+    if t < 0.4:
+        tau = -gam * t / 0.4
+        o = o1
+    elif t <= 0.6:
+        f = (t - 0.4) / 0.2
+        return (cb[0] + f * (cc[0] - cb[0]), cb[1] + f * (cc[1] - cb[1])), -gam
+    else:
+        tau = -gam - (math.pi / 2 - gam) * (t - 0.6) / 0.4
+        o = o2
+    return (o[0] - rf * math.sin(tau), o[1] + rf * math.cos(tau)), tau
+
+
+def reshape(text):
+    def piece(m):
+        body = m.group(0)
+        recs = []
+        pim_tools.transform_components(body, lambda q, lo, hi: recs.append((lo, hi)) or q)
+        ns = re.search(r'(Tag:\s*"_NORMAL"\s*\n)(.*?)(\n\s*\})', body, re.S)
+        nrm = [tuple(pim_tools.f2(c) for c in v.groups()) for v in pim_tools.VEC.finditer(ns.group(2))] if ns else None
+        res = [follow(q, nrm[i] if nrm else (0.0, 1.0, 0.0), *recs[i]) for i, q in enumerate(pim_tools.positions(body))]
+        it = iter(res)
+        body = pim_tools.POS_STREAM.sub(lambda s: s.group(1) + pim_tools.VEC.sub(
+            lambda v: "( %s  %s  %s )" % tuple(pim_tools.h(c) for c in next(it)[0]), s.group(2)) + s.group(3), body)
+        if ns:
+            it = iter(res)
+            body = re.sub(r'(Tag:\s*"_NORMAL"\s*\n)(.*?)(\n\s*\})', lambda s: s.group(1) + pim_tools.VEC.sub(
+                lambda v: "( %s  %s  %s )" % tuple(pim_tools.h(c) for c in next(it)[1]), s.group(2)) + s.group(3),
+                body, flags=re.S)
+        return body
+    return re.sub(r"Piece \{.*?\n\}", piece, text, flags=re.S)
+
+
+ctop_prof = {}
+post_x = [0.0]
+def prof(q, lo, hi):
+    if max(abs(lo[0]), abs(hi[0])) <= cw and hi[1] - lo[1] >= 0.1 and hi[1] > BULL_BASE + 0.05:
+        k = round(q[0], 2)
+        ctop_prof[k] = max(ctop_prof.get(k, -9), q[1])
+        if 0.4 < q[1] < 0.8:
+            post_x[0] = max(post_x[0], abs(q[0]))
+    return q
+pim_tools.transform_components(btext, prof)
+# real tube radius of the top bar (x = 0): the corner rings are rebuilt around their centre line with this radius
+top0 = [q[1] for q in pim_tools.positions(btext) if abs(q[0]) < 0.005 and q[1] > max(ctop_prof.values()) - 0.1]
+r = (max(top0) - min(top0)) / 2
+# original centre loop: straight top bar to flat_end, then a round bend (centre `bend`) into the posts (centre x px)
+flat_end = min(k for k, v in ctop_prof.items() if k > 0.05 and v >= max(ctop_prof.values()) - r)
+ty0 = max(ctop_prof.values()) - r
+px = max(ctop_prof) - r
+bend = (flat_end, ty0 - (px - flat_end))
+# new: flat top bar (centre q0[1]) up to q0[0] = BULL_SLOPE_IN before the bend, straight slope to the post at the
+# height of the side loop tops (q1)
+q0 = (flat_end - BULL_SLOPE_IN, ctop_y - r)
+q1 = (px, side_y - r)
+slope_x = lambda yc: q1[0] if yc <= q1[1] else q0[0] + (q0[1] - yc) / (q0[1] - q1[1]) * (q1[0] - q0[0])
+# rounded corners (radius BULL_ROUND) where the top bar turns into the slope and the slope into the post
+slen = math.hypot(q1[0] - q0[0], q1[1] - q0[1])
+ux, uy = (q1[0] - q0[0]) / slen, (q1[1] - q0[1]) / slen
+gam = -math.atan2(uy, ux)                                     # slope angle below horizontal
+rf = min(BULL_ROUND, 0.45 * slen / max(math.tan(gam / 2), math.tan((math.pi / 2 - gam) / 2)))
+d1, d2 = rf * math.tan(gam / 2), rf * math.tan((math.pi / 2 - gam) / 2)
+ca = (q0[0] - d1, q0[1])                                      # top bar end
+cb = (q0[0] + d1 * ux, q0[1] + d1 * uy)                       # slope start / end
+cc = (q1[0] - d2 * ux, q1[1] - d2 * uy)
+cd = (q1[0], q1[1] - d2)                                      # post top
+o1 = (ca[0], ca[1] - rf)
+o2 = (cc[0] + rf * uy, cc[1] - rf * ux)
+rail_gap = 0.245 * fr
+print("bull bar: centre top %.2f, side tops / middle rail %.2f, rails every %.2f" % (ctop_y, side_y, rail_gap))
+open(bpath, "w", encoding="utf-8").write(reshape(btext))
+print("bull bar outline (bumper frame, |x| 0..1.2 every 0.2 m):", ["%.2f" % outline(i * 0.2) for i in range(7)])
 
 # fuel tank trailer: ladder copies for the middle of the tank
 for need, flt in ((os.path.join(o.game, *FT.strip("/").split("/"), "accessory", "f_body", "ladder.pmd"), FT + "/*"),):

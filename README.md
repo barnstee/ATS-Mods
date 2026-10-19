@@ -92,8 +92,8 @@ python rubber_duck_r\make_rubber_duck_r.py   # --workshop <...\workshop\content\
 ```
 chrome bulldog on the cab sides removed (`BULLDOG`, also its black silhouette baked into the cab AO texture `700cab_ao`, filled from the surrounding AO into a copy `cab_ao`), fifth wheel coupling moved back. The battery box hanger (round plug + bracket) is dropped, since it would sit on the cab side above the raised box. Air tanks
 (workshop 1463066263) with the chrome materials turned into white gloss. The bull bar comes from the Pinnacle Rubber Duck
-mod (workshop 3593043044), scaled and moved onto the R bull bar with `rubber_duck_r\pim_tools.py`, side loops lifted above the headlamps (`BULL_LIFT`), centre section unchanged. Compiles them with the
-conversion tools, and packs and installs `rubber_duck_r.scs`. Needs ConverterPIX and all three mods installed
+(straight, starting `BULL_SLOPE_IN` before the original bend, rounded ends `BULL_ROUND`; the bend's tube rings are moved/rotated onto the new path), side loop tops reaching `BULL_SIDE_IN` into the centre posts, the top centre rail half way up the slopes,
+conversion tools,
 (the Mack R add-on `Mack_R_addon_v1.1.scs` is read from the mod folder). The output contains other authors' assets,
 so never commit or publish it.
 
