@@ -104,6 +104,7 @@ BULL_Y = [(0.22, 0.22), (0.40, 0.40 + BULL_LIFT), (0.62, 0.62 + BULL_LIFT), (1.2
 BULL_BASE = 0.3                            # bull bar: above this the loops are stretched to follow the hood outline
 BULL_GAP = 0.03                            # centre loop top this far above the hood crown
 BULL_TUBE = 0.04                           # tube diameter of the loops
+BULL_SILVER = "0.620000  0.630000  0.650000"  # bull bar diffuse (silver, with reflections)
 BULL_SLOPE_IN = 0.04                       # centre loop: the slopes start this far before the original corner bend
 BULL_ROUND = 0.08                          # radius of the rounded corners at both ends of the slopes
 BULL_SIDE_IN = 0.015                       # side loop tops reach this far into the centre posts
@@ -185,19 +186,19 @@ def battery_boxes(ctext):
         zc = (blo[2] + bhi[2]) / 2 - s * BAT_IN
         for xc in (x0 + length * 0.27, x0 + length * 0.73):
             yc = bottom - AIR_R - 0.01
-            for vv, tt in (pim_tools.cylinder((xc, yc, zc), 2, AIR_R, width * 0.95),
-                           pim_tools.cylinder((xc, yc, zc + s * (width * 0.95 + NIPPLE_L) / 2), 2, NIPPLE_R, NIPPLE_L, 12)):
+            for (cc, rad), (vv, tt) in (((xc, yc, zc), AIR_R), pim_tools.tank((xc, yc, zc), 2, AIR_R, width * 0.95)), \
+                                     (((xc, yc, zc), NIPPLE_R), pim_tools.cylinder((xc, yc, zc + s * (width * 0.95 + NIPPLE_L) / 2), 2, NIPPLE_R, NIPPLE_L, 16)):
                 base = len(verts)
-                verts += [{"_POSITION": q, "_NORMAL": n, "_UV0": (0.5, 0.5), "_RGBA": (1.0, 1.0, 1.0, 1.0)} for q, n in vv]
+                # one frame texel for all vertices: the frame texture is an atlas, wrapping it around the tanks runs
+                # into other (darker) parts of it; the frame's UV1 (AO)
+                verts += [{"_POSITION": q, "_NORMAL": n, "_UV0": uv0[:2], "_UV1": uv1[:2],
+                           "_RGBA": (1.0, 1.0, 1.0, 1.0)} for q, n in vv]
                 tris += [(a + base, b + base, c + base) for a, b, c in tt]
-    # own piece + gloss black material (copy of the frame material), part of the 235 chassis variant
+    # own piece in the frame material (chassis texture), part of the 235 chassis variant
     npiece = int(re.search(r"PieceCount: (\d+)", ctext).group(1))
     nmat = int(re.search(r"MaterialCount: (\d+)", ctext).group(1))
     skel = re.sub(r"\n\s*\d+\s*\([^)]*\)", "", piece)
-    skel = re.sub(r'\n     Stream \{\s*Format: \w+\s*Tag: "_UV1".*?\n     \}', "", skel, flags=re.S)   # one UV set
-    skel = re.sub(r"StreamCount: (\d+)", lambda mm: "StreamCount: %d" % (int(mm.group(1)) - 1), skel, count=1)
     skel = re.sub(r"Index: \d+", "Index: %d" % npiece, skel, count=1)
-    skel = re.sub(r"Material: \d+", "Material: %d" % nmat, skel, count=1)
     skel = re.sub(r"VertexCount: \d+", "VertexCount: 0", skel, count=1)
     skel = re.sub(r"TriangleCount: \d+", "TriangleCount: 0", skel, count=1)
     piece = pim_tools.append_geometry(skel, verts, tris)
@@ -303,6 +304,19 @@ for slot, (duck, rmodel, _, _, _) in PARTS.items():
     pit = open(dpath + ".pit", encoding="utf-8").read()
     pit = pit.replace('"/vehicle/truck/mack_pinnacle/paint"', '"%s"' % WHITE_TEX)      # grey paint base -> white
     pit = pit.replace('"/vehicle/truck/mack_pinnacle/accessory/bumper/duckbumao"', '"%s"' % WHITE_TEX)  # AO: old joints
+    if slot == "bumper":                                      # silver bull bar: polished aluminium look
+        def silver(mm):
+            a = lambda fmt, tag, val: ("\n        Attribute {\n            Format: %s\n            Tag: \"%s\"\n"
+                                       "            Value: ( %s )\n        }" % (fmt, tag, val))
+            t = lambda i, tag, val: "\n        Texture {\n            Tag: \"texture[%d]:%s\"\n            Value: \"%s\"\n        }" % (i, tag, val)
+            return ('    Material {\n        Alias: "mat_0000_paint"\n        Effect: "%s"\n        Flags: 0\n'
+                    '        AttributeCount: 6\n        TextureCount: 2' % AIR_EFFECT
+                    + a("FLOAT", "add_ambient", "0.000000") + a("FLOAT3", "diffuse", BULL_SILVER)
+                    + a("FLOAT3", "env_factor", "0.550000  0.550000  0.550000") + a("FLOAT", "reflection", "0.000000")
+                    + a("FLOAT", "shininess", "120.000000") + a("FLOAT3", "specular", "1.000000  1.000000  1.000000")
+                    + t(0, "texture_base", WHITE_TEX) + t(1, "texture_reflection", "/material/environment/vehicle_reflection")
+                    + "\n    }")
+        pit = re.sub(r'    Material \{\s*Alias: "mat_0000_paint".*?\n    \}', silver, pit, count=1, flags=re.S)
     open(out + ".pit", "w", encoding="utf-8").write(pit.replace(os.path.basename(dpath) + ".pim", slot + ".pim"))
     print("%-7s duck %s -> R %s" % (slot, ["%.2f" % v for v in dbox[0] + dbox[1]], ["%.2f" % v for v in rbox[0] + rbox[1]]))
 # white grill / headlamps: same mesh, chrome materials whitened

@@ -90,10 +90,30 @@ plain white on the day cab), compiles the masks with the conversion tools, packs
 ```powershell
 python rubber_duck_r\make_rubber_duck_r.py   # --workshop <...\workshop\content\270880> --addon <Mack_R_addon_v1.1.scs>
 ```
-chrome bulldog on the cab sides removed (`BULLDOG`, also its black silhouette baked into the cab AO texture `700cab_ao`, filled from the surrounding AO into a copy `cab_ao`), fifth wheel coupling moved back. The battery box hanger (round plug + bracket) is dropped, since it would sit on the cab side above the raised box. Air tanks
-(workshop 1463066263) with the chrome materials turned into white gloss. The bull bar comes from the Pinnacle Rubber Duck
-(straight, starting `BULL_SLOPE_IN` before the original bend, rounded ends `BULL_ROUND`; the bend's tube rings are moved/rotated onto the new path), side loop tops reaching `BULL_SIDE_IN` into the centre posts, the top centre rail half way up the slopes,
-conversion tools,
+White grill (add-on "R700 Grill Chrome 1"), white headlamps (single/double) and white rear mudflaps (inverted copy of the
+Mack logo texture); the grill surround is gloss black: copies of the chrome Mack R Series parts (workshop 1463066263)
+with the chrome materials turned into white gloss. Black "Double Pipe Filter" (add-on, chrome bands kept), "Round Matte
+Black" 260 gal fuel tanks. "Steel Black" wheel discs (`f_disc`/`r_disc`): copies of the SCS "Steel" discs (extracted
+from `base_vehicle.scs` with sk-zk Extractor if missing in `C:\ATSExtract`) with a black rim material.
+
+Recompiled copy of the R700 truck/cab model (cabins `r700sleep(d)` + chassis `235st130` overridden): chrome bulldog on
+the cab sides removed (`BULLDOG`, also its black silhouette baked into the cab AO texture `700cab_ao`, filled from the
+surrounding AO into a copy `cab_ao`), fifth wheel moved back `FIFTH_BACK` m (also the add-on's `6x4_235_st` chass),
+sleeper door frames gloss black, chrome strip along the bottom of the sleeper sides (`SLEEPER_STRIP`). Battery boxes on
+the 235 chassis bigger/higher/next to the fuel tank (`BAT_*`), their hanger (round plug + bracket) dropped, with two
+generated domed air tanks below each (`AIR_R`, nipples) in the chassis frame material (one frame texel for the
+whole tank, so they are evenly coloured).
+Also needs the R.D. Trucking paint job (workshop 2709808527): its cabin mask is copied without the bulldog silhouette
+and its definition overridden.
+
+The bull bar (silver, `BULL_SILVER`) comes from the Pinnacle Rubber Duck mod (workshop 3593043044), scaled and moved
+onto the R bull bar with `rubber_duck_r\pim_tools.py`, side loops lifted above the headlamps (`BULL_LIFT`), then
+reshaped like the real truck: side loop tops flat, meeting the middle centre rail (`BULL_SIDE_RAIL`, raised
+`BULL_SIDE_UP`) and reaching `BULL_SIDE_IN` into the centre posts; centre loop widened (`BULL_CENTRE_W`) with a flat
+top just above the hood crown (`BULL_GAP`) and straight slopes down to the side loop tops (starting `BULL_SLOPE_IN`
+before the original bend, rounded ends `BULL_ROUND`; the bend's tube rings are moved/rotated onto the new path); the
+top centre rail half way up the slopes, the others equally spaced. Compiles everything with the conversion tools, and
+packs and installs `rubber_duck_r.scs`. Needs ConverterPIX and all three mods installed
 (the Mack R add-on `Mack_R_addon_v1.1.scs` is read from the mod folder). The output contains other authors' assets,
 so never commit or publish it.
 

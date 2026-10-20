@@ -156,6 +156,39 @@ def box(lo, hi):
     return verts, tris
 
 
+def tank(center, axis, radius, length, seg=32, dome=0.45, dome_rings=6):
+    """Closed tank along axis 0/1/2 with elliptical (domed) ends of depth dome*radius, smooth normals, both faces of
+    every triangle: (positions+normals list, triangles)."""
+    import math
+    a, b = [k for k in range(3) if k != axis]
+    half, dd = length / 2, dome * radius
+    prof = [(-half + dd - dd * math.cos(t), radius * math.sin(t), -math.cos(t) / dd, math.sin(t) / radius)
+            for t in (math.pi / 2 * i / dome_rings for i in range(1, dome_rings + 1))]
+    prof = [(-half, 0.0, -1.0, 0.0)] + prof + [(-p[0], p[1], -p[2], p[3]) for p in reversed(prof)] + [(half, 0.0, 1.0, 0.0)]
+    verts, tris, rings = [], [], []
+    for ax_, rr, na, nr in prof:
+        ln = math.hypot(na, nr)
+        ring = []
+        for i in range(seg if rr > 0 else 1):
+            ang = 2 * math.pi * i / seg
+            q, n = list(center), [0.0, 0.0, 0.0]
+            q[axis] += ax_; q[a] += math.cos(ang) * rr; q[b] += math.sin(ang) * rr
+            n[axis] = na / ln; n[a] = math.cos(ang) * nr / ln; n[b] = math.sin(ang) * nr / ln
+            ring.append(len(verts)); verts.append((tuple(q), tuple(n)))
+        rings.append(ring)
+    for r0, r1 in zip(rings, rings[1:]):
+        for i in range(seg):
+            j = (i + 1) % seg
+            if len(r0) == 1:
+                tris.append((r0[0], r1[j], r1[i]))
+            elif len(r1) == 1:
+                tris.append((r0[i], r0[j], r1[0]))
+            else:
+                tris += [(r0[i], r0[j], r1[j]), (r0[i], r1[j], r1[i])]
+    tris += [(x, z, y) for x, y, z in tris]
+    return verts, tris
+
+
 if __name__ == "__main__":
 	for f in sys.argv[1:]:
 		lo, hi = bbox(open(f, encoding="utf-8").read())
